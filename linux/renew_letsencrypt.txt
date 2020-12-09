@@ -1,0 +1,4 @@
+1. ssh into nginx server
+2. switch to root user
+3. run: certbot --server https://acme-v02.api.letsencrypt.org/directory -d *.domain.com --manual --preferred-challenges dns-01 certonly
+4. update _acme-challenge.domain.com record with the returned value
