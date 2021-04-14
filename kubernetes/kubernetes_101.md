@@ -1,5 +1,113 @@
 # Kubernetes 101
 
+## kubectl Common Commands
+* Deploy an app to a k8s cluster:
+  ``` bash
+  kubectl create deployment deployment_name --image=some_image:tag
+  ```
+
+* Get deployment info:
+  * display basic deployment info - `kubectl get deployment deployment_name`
+    ``` bash
+    $ kubectl get deployment hello-go 
+    NAME       READY   UP-TO-DATE   AVAILABLE   AGE
+    hello-go   1/1     1            1           5m23s
+    ```
+
+  * Get specific pod info - `kubectl get pod -l app=deployment_name`
+    ``` bash
+    $ kubectl get pod -l app=hello-go
+    NAME                        READY   STATUS    RESTARTS   AGE
+    hello-go-6b57b7658f-c6llz   1/1     Running   0          12m
+    ```
+  * Detailed pod info - `kubectl describe pod -l app=deployment_name`
+    ``` bash
+    $ kubectl describe pod -l app=hello-go
+    Name:         hello-go-6b57b7658f-c6llz
+    Namespace:    default
+    Priority:     0
+    Node:         kube101-pool-8xnon/10.108.0.3
+    Start Time:   Wed, 14 Apr 2021 11:25:52 -0400
+    Labels:       app=hello-go
+                  pod-template-hash=6b57b7658f
+    Annotations:  <none>
+    Status:       Running
+    IP:           10.244.1.116
+    IPs:
+      IP:           10.244.1.116
+    Controlled By:  ReplicaSet/hello-go-6b57b7658f
+    Containers:
+      kube101-go:
+        Container ID:   containerd://   c2863ddd98add56c047104f3f4d39b791dee91858f68857ab8f5accc246d8c6c
+        Image:          joeyengel/kube101-go:latest
+        Image ID:       docker.io/joeyengel/    kube101-go@sha256:a91410916caccc6fe6fb870b3bef48538546e14737ba05eeb2a8d46559b4b2a2
+        Port:           <none>
+        Host Port:      <none>
+        State:          Running
+          Started:      Wed, 14 Apr 2021 11:25:55 -0400
+        Ready:          True
+        Restart Count:  0
+        Environment:    <none>
+        Mounts:
+          /var/run/secrets/kubernetes.io/serviceaccount from default-token-m9wfl (ro)
+    Conditions:
+      Type              Status
+      Initialized       True 
+      Ready             True 
+      ContainersReady   True 
+      PodScheduled      True 
+    Volumes:
+      default-token-m9wfl:
+        Type:        Secret (a volume populated by a Secret)
+        SecretName:  default-token-m9wfl
+        Optional:    false
+    QoS Class:       BestEffort
+    Node-Selectors:  <none>
+    Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                     node.kubernetes.io/unreachable:NoExecute for 300s
+    Events:
+      Type    Reason     Age   From                         Message
+      ----    ------     ----  ----                         -------
+      Normal  Scheduled  15m   default-scheduler            Successfully assigned default/  hello-go-6b57b7658f-c6llz to kube101-pool-8xnon
+      Normal  Pulling    15m   kubelet, kube101-pool-8xnon  Pulling image "joeyengel/kube101-go:latest"
+      Normal  Pulled     15m   kubelet, kube101-pool-8xnon  Successfully pulled image   "joeyengel/kube101-go:latest" in 1.106699284s
+      Normal  Created    15m   kubelet, kube101-pool-8xnon  Created container kube101-go
+      Normal  Started    15m   kubelet, kube101-pool-8xnon  Started container kube101-go
+    ```
+
+* Map a k8s application port to a local port - `kubectl expose deployment hello-go --port=80 --target-port=8180 --type=NodePort`
+  * k8s applications run on a private IP, so we need to expose required ports to properly route traffic and access the app
+  * This command creates a `service` that with the same name as the `deployment_name`
+
+* Get servce info - `kubectl get service hello-go`
+  ``` bash
+  $ kubectl get service hello-go
+  NAME       TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+  hello-go   NodePort   10.245.243.167   <none>        80:30942/TCP   3s
+  ```
+
+* Get Node info (similar to docker info)- `kubectl get nodes -o json|jq`
+
+* Get External IPs of all nodes - `kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'`
+
+* Change an image for a running deployment - `kubectl set image deployment/deployment_name container_name=newimage/name:tag`
+
+* Rollback a deployment to a k8s cluster:
+  * Get deployment history - `kubectl rollout history deployment hello-go`
+    ``` bash
+    $ kubectl rollout history deployment hello-go
+    deployment.apps/hello-go 
+    REVISION  CHANGE-CAUSE
+    1         <none>
+    2         <none>
+    ```
+
+  * Rollback most recent deployment - `kubectl rollout undo deployment hello-go`
+
+* Export k8s cluster config - `kubectl get deployments.apps hello-go -o yaml > kube101-hello-go.yaml`
+  * Useful for spinning up a managed k8s cluster in the cloud that doesn't need 100% availability.  Export the config before destroying the k8s service, then when you need to get back to the running state, create a new k8s service, download/export the kubectl config file, and run `kubectl apply -f kube101-hello-go.yaml` to set up the nodes/pods 
+    * Note - this is untested and may need not work as expected.
+
 ## Kubernetes Environment Setup
 * `minikube` - Tool that lets you run a single-node k8s cluster on your local computer
 * `kubectl` - kubectl controls the Kubernetes cluster manager
@@ -28,6 +136,46 @@
 
 <br>
 <br>
+
+## Connect to Cloud k8s cluster
+* Download cluster config file
+* mv config file to `~/.kube/`:
+  ``` bash
+  joey@xps15: ~ $ mv Downloads/kube101-kubeconfig.yaml ~/.kube/config-kube101.yaml
+  ``` 
+* Set kubectl config to the cloud config file:
+  ``` bash
+  export KUBECONFIG=~/.kube/config-kube101.yaml
+  ```
+* Verify:
+  ``` bash
+  joey@xps15: ~/Downloads $ kubectl get nodes
+  NAME                 STATUS   ROLES    AGE   VERSION
+  kube101-pool-8y161   Ready    <none>   30m   v1.20.2
+  kube101-pool-8y169   Ready    <none>   30m   v1.20.2
+  kube101-pool-8y16z   Ready    <none>   30m   v1.20.2
+  ```
+
+
+<br>
+<br>
+
+## Connect DockerHub Creds to k8s cluster
+* Create a secret docker-registry file:
+``` bash
+joey@xps15: ~/Downloads $ kubectl create secret docker-registry regcred \
+> --docker-username=dockerhub_username \
+> --docker-password=dockerhub_access_token \
+> --docker-email=dockerhub@email
+secret/regcred created
+```
+* View secrets 
+``` bash
+joey@xps15: ~/Downloads $ kubectl get secrets
+NAME                  TYPE                                  DATA   AGE
+default-token-n4dmq   kubernetes.io/service-account-token   3      74m
+regcred               kubernetes.io/dockerconfigjson        1      3m10s
+```
 
 ## Building Container Images Directly Inside minikube
 1. Switch docker images context to using minikube's built-in docker:
