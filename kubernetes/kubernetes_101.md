@@ -87,6 +87,14 @@
   ```
 
 * Get Node info (similar to docker info)- `kubectl get nodes -o json|jq`
+  * Better alternative - `kubectl get nodes -o wide`
+    ``` bash
+    $ kubectl get nodes -o wide
+    NAME              STATUS   ROLES    AGE   VERSION   INTERNAL-IP   EXTERNAL-IP       OS-IMAGE                       KERNEL-VERSION    CONTAINER-RUNTIME
+    kube-pool-8xx14   Ready    <none>   45m   v1.20.2   10.108.0.3    104.236.209.165   Debian GNU/Linux 10 (buster)   4.19.0-11-amd64   containerd://1.4.3
+    kube-pool-8xx1h   Ready    <none>   45m   v1.20.2   10.108.0.5    104.236.209.167   Debian GNU/Linux 10 (buster)   4.19.0-11-amd64   containerd://1.4.3
+    kube-pool-8xx1k   Ready    <none>   45m   v1.20.2   10.108.0.4    104.236.209.166   Debian GNU/Linux 10 (buster)   4.19.0-11-amd64   containerd://1.4.3
+    ```
 
 * Get External IPs of all nodes - `kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'`
 
@@ -106,7 +114,7 @@
 
 * Export k8s cluster config - `kubectl get deployments.apps hello-go -o yaml > kube101-hello-go.yaml`
   * Useful for spinning up a managed k8s cluster in the cloud that doesn't need 100% availability.  Export the config before destroying the k8s service, then when you need to get back to the running state, create a new k8s service, download/export the kubectl config file, and run `kubectl apply -f kube101-hello-go.yaml` to set up the nodes/pods 
-    * Note - this is untested and may need not work as expected.
+    * Note - you will need to re-expose the deployment ports and use the new external ip/port to access the site.
 
 ## Kubernetes Environment Setup
 * `minikube` - Tool that lets you run a single-node k8s cluster on your local computer
