@@ -210,3 +210,39 @@ kubernetesui/metrics-scraper              v1.0.4     86262685d9ab   12 months ag
 k8s.gcr.io/pause                          3.2        80d28bedfe5d   14 months ago   683kB
 ```
 
+## Set up NFS Shared Storage Volume
+
+Pods requires a persistant volume to store data, but a volume can only be attached to a single pod.  A simple (and cheap) way around this is to set up an NFS server and add it as a storage provisioning system to your kubernetes cluster.
+
+1. Create an instance in the same region as your k8s cluster
+  * Use Debian 10 (you will see why in later steps)
+  * give this server a private IP (we only want the NFS share accessible internally)
+2. Run the Ansible playbook [here](https://github.com/JosephEngel/kubernetes-101/tree/master/episode-05/nfs-server)
+  * Note: you will need to install a few ansible-galaxy roles, and edit the inventory file to include the public IP of your newly created instance
+3. You should have an NFS server set up and running.  You can confirm by ssh-ing into the server and running `ps aux |grep nfs`
+
+Now that the NFS server is setup, we need to add it as a storage provisioning system.  To do so, run the following commands:
+  ```
+  helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+  ```
+
+  ```
+  helm install nfs nfs-subdir-external-provisioner/nfs-subdir-external-provisioner --set nfs.server=x.x.x.x --set nfs.path=/home/nfs
+  ```
+
+Lastly, you will need to edit your deployment file to use the nfs share.  It should have something similar to this:
+```
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: drupal-files-pvc
+  namespace: drupal
+spec:
+  accessModes:
+    - ReadWriteMany  # Was ReadWriteOnce before; required to have multiple pods use same storage
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: nfs-client  # Use the new nfs storage
+```
