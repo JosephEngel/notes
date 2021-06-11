@@ -246,3 +246,27 @@ spec:
       storage: 1Gi
   storageClassName: nfs-client  # Use the new nfs storage
 ```
+
+## Add Metrics-Server to Cluster
+
+A metrics-server is required to do horizontal-pod-autoscaling, but does not come by default on any major cloud provides managed kubernetes services.  Here are instructions on how to add one to a k8s cluster:
+
+1. Switch to default namespace:
+   ```
+   kubens default
+   ```
+2. Download and install helm chart:
+   ```
+   helm repo add bitnami https://charts.bitnami.com/bitnami
+   helm install -f values/metrics-server.yml metrics-server bitnami/metrics-server
+   ```
+   * This metrics-server.yml file should look like:
+     ```
+     ---
+     apiService:
+       create: true
+     extraArgs:
+       kubelet-preferred-address-types: InternalIP
+       kubelet-insecure-tls:
+     ```
+     
